@@ -17,13 +17,15 @@
 
 /*
  * TODOs :
- * - var `show_errors' = True in constructor means _every_ fun should display
- * errors
- * - var `force_showerr' = True : bypass $show_errors (if False)
+ *
  */
 
 class PrefSql extends mysqli {
-  
+
+  // TODO: show_errors seems not to be changed...
+  // @var show_errors  Global setting for displaying errors
+  private $show_errors;
+
   /*
    * +-----------------------+
    * | Constructor functions |
@@ -33,24 +35,28 @@ class PrefSql extends mysqli {
   /**
    * Construct a new PrefSql instance and init a new connection
    *
-   * @param host         Host to connect to
-   * @param login        Login used to connect to the server
-   * @param password     Password used to conncect to the server
-   * @param database     Database to select on the server
-   * @param show_errors  Choice for displaying error
-   * @throws Exception   If an error occured while connecting to the server
+   * @param host           Host to connect to
+   * @param login          Login used to connect to the server
+   * @param password       Password used to conncect to the server
+   * @param database       Database to select on the server
+   * @param show_errors    Global setting for displaying errors
+   * @param force_showerr  Display errors for this function only,
+   *                       even if show_errors is set to False
+   * @throws Exception     If an error occured while connecting to the server
    */
   public function __construct($host, $login, $password, $database,
                               $show_errors=False, $force_showerr=False) {
-    // If $show_errors is set to False, no errors will be displayed
-    if(!$show_errors) { 
+    // If we don't want errors to be displayed
+    if(! ($show_errors OR $force_showerr) ) {
       parent::__construct($host, $login, $password, $database);
+      $this->show_errors = $show_errors;
     }
     // Else $show_errors is set to True, errors will be displayed
     else {
       // Trying to connect
       try {
-        $this->construct_exception($host, $login, $password, $database);
+        $this->construct_exception($host, $login, $password, $database,
+                                   $show_errors);
       } // And catching an exception if there is one
       catch (Exception $e) {
         print($this->display_msg_error('Error while connecting to MySQL',
@@ -71,8 +77,10 @@ class PrefSql extends mysqli {
    * @throws Exception  mysqli_connect_error() message
    * @return            mysqli object
    */
-  private function construct_exception($host, $login, $password, $database) {
+  private function construct_exception($host, $login, $password, $database,
+                                       $show_errors) {
     $try_connect = parent::__construct($host, $login, $password, $database);
+    $this->show_errors = $show_errors;
     // If there is an error while trying to connect
     if (mysqli_connect_errno()) {
       throw new Exception(mysqli_connect_error());
@@ -93,16 +101,17 @@ class PrefSql extends mysqli {
   /**
    * Query and SQL request to the database
    *
-   * @param req          SQL request
-   * @param show_errors  Choice for displaying errors
-   * @throws Exception   SQL error message
-   * @return             mysqli query object
+   * @param req            SQL request
+   * @param force_showerr  Display errors for this function only,
+   *                       even if show_errors is set to False
+   * @throws Exception     SQL error message
+   * @return               mysqli query object
    */
-  public function query($req, $show_errors=False) {
+  public function query($req, $force_showerr=False) {
     // Storing the query
     $query = parent::query($req);
     // If no error or errors are disabled
-    if($query != False OR $show_errors == False) {
+    if($query != False OR !($this->show_errors OR $force_showerr)) {
       return $query;
     }
     // Else, there is an error
@@ -133,7 +142,7 @@ class PrefSql extends mysqli {
       throw new Exception('(#'.$this->errno.') '.$this->error);
     }
     // If not, it might be an upstream error
-    // TODO: it is possible to have both an query error and a serv error?
+    // TODO: it is possible to have both a query error and a serv error?
     // cause the 'else' stands for... else.
     else {
       throw new Exception(
