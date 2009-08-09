@@ -22,10 +22,10 @@
 
 class PrefSql extends mysqli {
 
-  // TODO: show_errors seems not to be changed...
   // @var show_errors  Global setting for displaying errors
   private $show_errors;
 
+  
   /*
    * +-----------------------+
    * | Constructor functions |
@@ -47,7 +47,7 @@ class PrefSql extends mysqli {
   public function __construct($host, $login, $password, $database,
                               $show_errors=False, $force_showerr=False) {
     // If we don't want errors to be displayed
-    if(! ($show_errors OR $force_showerr) ) {
+    if(!($show_errors OR $force_showerr)) {
       parent::__construct($host, $login, $password, $database);
       $this->show_errors = $show_errors;
     }
