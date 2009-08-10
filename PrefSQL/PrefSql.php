@@ -137,13 +137,10 @@ class PrefSql extends mysqli {
    */
   private function query_throw_exception($req) {
     // If the error is in the query
-    // TODO: don't know why `isset($this->error)` doesn't work
     if($this->error != NULL) {
       throw new Exception('(#'.$this->errno.') '.$this->error);
     }
     // If not, it might be an upstream error
-    // TODO: it is possible to have both a query error and a serv error?
-    // cause the 'else' stands for... else.
     else {
       throw new Exception(
         'Error <strong>might not be (only)</strong> in the query,
