@@ -12,12 +12,11 @@
  * NOTES/BEHAVIOURS:
  * - `display_errors' must be set to Off in php.ini, otherwise errors will be
  * displayed anyway
- * - If an error or an exception is encounter then the die() function is invoked
  */
 
 /*
  * TODOs :
- * - Decide whether to call die() when encountering an error
+ *
  */
 
 class PrefSql extends mysqli {
@@ -68,8 +67,6 @@ class PrefSql extends mysqli {
       catch (Exception $e) {
         print($this->display_msg_error('Error while connecting to MySQL',
                                        $e->getMessage()));
-        // If there is an error then stop all next processes
-        die();
       }
     }
   }
@@ -130,8 +127,6 @@ class PrefSql extends mysqli {
       catch (Exception $e) {
         print($this->display_msg_error('Error while querying',
                                        $e->getMessage()));
-        // Stop all next processes
-        die();
       }
     }
   }
