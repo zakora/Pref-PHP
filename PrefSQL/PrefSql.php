@@ -12,7 +12,6 @@
  * NOTES/BEHAVIOURS:
  * - `display_errors' must be set to Off in php.ini, otherwise errors will be
  * displayed anyway
- * - If an error or an exception is encounter then the die() function is invoked
  */
 
 /*
@@ -24,6 +23,13 @@ class PrefSql extends mysqli {
 
   // @var show_errors  Global setting for displaying errors
   private $show_errors;
+  // Next are benchmarks vars
+  // @var total_time  Total time of the queries during the session (in millisec)
+  private $total_time = 0.0;
+  // @var trace_req  Array with query info: req, time (millisec), error (if one)
+  private $trace_req = array();
+  // @var nb_req  Number of requests
+  private $nb_req = 0;
 
   
   /*
@@ -61,8 +67,6 @@ class PrefSql extends mysqli {
       catch (Exception $e) {
         print($this->display_msg_error('Error while connecting to MySQL',
                                        $e->getMessage()));
-        // If there is an error then stop all next processes
-        die();
       }
     }
   }
@@ -108,8 +112,9 @@ class PrefSql extends mysqli {
    * @return               mysqli query object
    */
   public function query($req, $force_showerr=False) {
-    // Storing the query
-    $query = parent::query($req);
+    // Executing and benchmarking the query
+    $query = $this->bench_query($req);
+    
     // If no error or errors are disabled
     if($query != False OR !($this->show_errors OR $force_showerr)) {
       return $query;
@@ -122,8 +127,6 @@ class PrefSql extends mysqli {
       catch (Exception $e) {
         print($this->display_msg_error('Error while querying',
                                        $e->getMessage()));
-        // Stop all next processes
-        die();
       }
     }
   }
@@ -138,7 +141,8 @@ class PrefSql extends mysqli {
   private function query_throw_exception($req) {
     // If the error is in the query
     if($this->error != NULL) {
-      throw new Exception('(#'.$this->errno.') '.$this->error);
+      throw new Exception('(#'.$this->errno.') '.$this->error.'<br />
+                          <em>Involved query</em>: '.$req);
     }
     // If not, it might be an upstream error
     else {
@@ -149,6 +153,51 @@ class PrefSql extends mysqli {
   }
 
 
+  /*
+   * +---------------------+
+   * | Benchmark functions |
+   * +---------------------+
+   */
+
+  /**
+   * Benchmark for the query function
+   *
+   * @param req  SQL request
+   * @return     The query (already executed)
+   */
+  private function bench_query($req) {
+    // Starting the query clock
+    $time_start = microtime(True);
+    // Executing and storing the query
+    $query = parent::query($req);
+    // Stopping the query clock
+    $query_time = microtime(True) - $time_start;
+    // Converting query_time to millisec
+    $query_time = $query_time * 1000;
+    // Adding this query time to the total time
+    $this->total_time += $query_time;
+    // Storing this query info to trace_req
+    $this->trace_req[$this->nb_req]['req'] = $req;
+    $this->trace_req[$this->nb_req]['time'] = $query_time;
+    $this->trace_req[$this->nb_req]['error'] = $this->error;
+    // Incrementing nb_req
+    $this->nb_req++;
+    // Returning the executed query so the function query() can go on
+    return $query;
+  }
+
+  /*** Benchmarks Getters ***/
+  /** @param $precision  precision of round() */
+  public function get_total_time($precision=3) {
+    return round($this->total_time, $precision);
+  }
+  public function get_trace_req() {
+    return $this->trace_req;
+  }
+  public function get_nb_req() {
+    return $this->nb_req;
+  }
+  
   /*
    * +--------------------+
    * | Non-core functions |
@@ -165,7 +214,7 @@ class PrefSql extends mysqli {
   private function display_msg_error($title, $msg) {
     $resul = '<h3>PrefSql<h3>
               <h4>'.$title.'</h4>
-              <p>The error is: <em>'.$msg.'</em></p>';
+              <p><em>The error is</em>: '.$msg.'</p>';
     return $resul;
   }
 }
