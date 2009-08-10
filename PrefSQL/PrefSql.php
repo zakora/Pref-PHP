@@ -17,7 +17,7 @@
 
 /*
  * TODOs :
- *
+ * - Decide whether to call die() when encountering an error
  */
 
 class PrefSql extends mysqli {
@@ -25,9 +25,9 @@ class PrefSql extends mysqli {
   // @var show_errors  Global setting for displaying errors
   private $show_errors;
   // Next are benchmarks vars
-  // @var total_time  Total time of the queries during the session
+  // @var total_time  Total time of the queries during the session (in millisec)
   private $total_time = 0.0;
-  // @var trace_req  Array of each query's time
+  // @var trace_req  Array of each query info: req, time (millisec), error
   private $trace_req = array();
   // @var nb_req  Number of requests
   private $nb_req = 0;
@@ -176,17 +176,24 @@ class PrefSql extends mysqli {
     $query = parent::query($req);
     // Stopping the query clock
     $query_time = microtime(True) - $time_start;
-    // Storing benchmark info
+    // Converting query_time to millisec
+    $query_time = $query_time * 1000;
+    // Adding this query time to the total time
     $this->total_time += $query_time;
-    $this->trace_req[$this->nb_req]['req'] = $query;
-    $this->trace_req[$this->nb_req]['time'] = round($query_time * 1000, 2);
+    // Storing this query info to trace_req
+    $this->trace_req[$this->nb_req]['req'] = $req;
+    $this->trace_req[$this->nb_req]['time'] = $query_time;
+    $this->trace_req[$this->nb_req]['error'] = $this->error;
+    // Incrementing nb_req
     $this->nb_req++;
+    // Returning the executed query so the function query() can go on
     return $query;
   }
 
   /*** Benchmarks Getters ***/
-  public function get_total_time() {
-    return $this->total_time;
+  /** @param $precision  precision of round() */
+  public function get_total_time($precision=3) {
+    return round($this->total_time, $precision);
   }
   public function get_trace_req() {
     return $this->trace_req;
