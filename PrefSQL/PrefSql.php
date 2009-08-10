@@ -24,6 +24,13 @@ class PrefSql extends mysqli {
 
   // @var show_errors  Global setting for displaying errors
   private $show_errors;
+  // Next are benchmarks vars
+  // @var total_time  Total time of the queries during the session
+  private $total_time = 0.0;
+  // @var trace_req  Array of each query's time
+  private $trace_req = array();
+  // @var nb_req  Number of requests
+  private $nb_req = 0;
 
   
   /*
@@ -108,8 +115,9 @@ class PrefSql extends mysqli {
    * @return               mysqli query object
    */
   public function query($req, $force_showerr=False) {
-    // Storing the query
-    $query = parent::query($req);
+    // Executing and benchmarking the query
+    $query = $this->bench_query($req);
+    
     // If no error or errors are disabled
     if($query != False OR !($this->show_errors OR $force_showerr)) {
       return $query;
@@ -137,13 +145,10 @@ class PrefSql extends mysqli {
    */
   private function query_throw_exception($req) {
     // If the error is in the query
-    // TODO: don't know why `isset($this->error)` doesn't work
     if($this->error != NULL) {
       throw new Exception('(#'.$this->errno.') '.$this->error);
     }
     // If not, it might be an upstream error
-    // TODO: it is possible to have both a query error and a serv error?
-    // cause the 'else' stands for... else.
     else {
       throw new Exception(
         'Error <strong>might not be (only)</strong> in the query,
@@ -152,6 +157,44 @@ class PrefSql extends mysqli {
   }
 
 
+  /*
+   * +---------------------+
+   * | Benchmark functions |
+   * +---------------------+
+   */
+
+  /**
+   * Benchmark for the query function
+   *
+   * @param req  SQL request
+   * @return     The query (already executed)
+   */
+  private function bench_query($req) {
+    // Starting the query clock
+    $time_start = microtime(True);
+    // Executing and storing the query
+    $query = parent::query($req);
+    // Stopping the query clock
+    $query_time = microtime(True) - $time_start;
+    // Storing benchmark info
+    $this->total_time += $query_time;
+    $this->trace_req[$this->nb_req]['req'] = $query;
+    $this->trace_req[$this->nb_req]['time'] = round($query_time * 1000, 2);
+    $this->nb_req++;
+    return $query;
+  }
+
+  /*** Benchmarks Getters ***/
+  public function get_total_time() {
+    return $this->total_time;
+  }
+  public function get_trace_req() {
+    return $this->trace_req;
+  }
+  public function get_nb_req() {
+    return $this->nb_req;
+  }
+  
   /*
    * +--------------------+
    * | Non-core functions |
