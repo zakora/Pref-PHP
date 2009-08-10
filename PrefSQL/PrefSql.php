@@ -27,7 +27,7 @@ class PrefSql extends mysqli {
   // Next are benchmarks vars
   // @var total_time  Total time of the queries during the session (in millisec)
   private $total_time = 0.0;
-  // @var trace_req  Array of each query info: req, time (millisec), error
+  // @var trace_req  Array with query info: req, time (millisec), error (if one)
   private $trace_req = array();
   // @var nb_req  Number of requests
   private $nb_req = 0;
@@ -146,7 +146,8 @@ class PrefSql extends mysqli {
   private function query_throw_exception($req) {
     // If the error is in the query
     if($this->error != NULL) {
-      throw new Exception('(#'.$this->errno.') '.$this->error);
+      throw new Exception('(#'.$this->errno.') '.$this->error.'<br />
+                          <em>Involved query</em>: '.$req);
     }
     // If not, it might be an upstream error
     else {
@@ -218,7 +219,7 @@ class PrefSql extends mysqli {
   private function display_msg_error($title, $msg) {
     $resul = '<h3>PrefSql<h3>
               <h4>'.$title.'</h4>
-              <p>The error is: <em>'.$msg.'</em></p>';
+              <p><em>The error is</em>: '.$msg.'</p>';
     return $resul;
   }
 }
